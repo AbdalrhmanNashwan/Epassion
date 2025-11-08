@@ -1,0 +1,39 @@
+# --- Python general ---
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+.eggs/
+
+# --- Virtual envs ---
+.venv/
+venv/
+env/
+
+# --- Build/Packaging outputs ---
+build/
+dist/
+dist_out/
+*.spec
+*.exe
+*.msi
+*.zip
+*.rar
+
+# --- PySide/Qt packaging & generated assets ---
+_internal/
+*.dll
+*.pak
+*.qmlc
+*.qrc
+*_resource.py
+
+# --- Logs ---
+*.log
+
+# --- IDE/OS ---
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

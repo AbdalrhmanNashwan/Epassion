@@ -1,0 +1,73 @@
+/* Light theme + brand (#22ABE1) with improved readability */
+* {
+  selection-background-color: #E8F6FF;
+  selection-color: #0B1221;
+}
+
+QMainWindow { background: #FFFFFF; }
+QWidget { color: #0B1221; }
+
+QStatusBar {
+  background: #FFFFFF;
+  border-top: 1px solid #E7ECF2;
+  color: #536077;
+}
+
+/* Cards & tool panels */
+QFrame#card, QFrame#toolbar {
+  background: #FFFFFF;
+  border: 1px solid #E7ECF2;
+  border-radius: 12px;
+}
+
+/* Inputs & buttons */
+QLineEdit {
+  border: 1px solid #E7ECF2;
+  border-radius: 10px;
+  padding: 8px 10px;
+  background: #FFFFFF;
+  color: #0B1221;
+}
+QLineEdit:focus { border-color: #22ABE1; }
+
+QPushButton {
+  border: 1px solid #E7ECF2;
+  border-radius: 10px;
+  padding: 8px 14px;
+  background: #FFFFFF;
+  color: #0B1221;
+  font-weight: 600;
+}
+QPushButton:hover { background: #F5FAFF; border-color: #22ABE1; }
+
+/* Primary button helper (setProperty('primary', True)) */
+QPushButton[primary="true"] {
+  background: #22ABE1;
+  color: white;
+  border: 1px solid #22ABE1;
+  border-radius: 10px;
+  padding: 8px 16px;
+  font-weight: 700;
+}
+QPushButton[primary="true"]:disabled {
+  background: #BDE8F9;
+  border-color: #BDE8F9;
+  color: white;
+}
+QPushButton[primary="true"]:hover:!disabled { background: #179FD6; }
+
+/* Tree (content) */
+QTreeWidget {
+  border: 1px solid #E7ECF2;
+  border-radius: 10px;
+  background: #FFFFFF;
+  color: #0B1221;
+}
+QTreeWidget::item { padding: 6px 8px; }
+QTreeWidget::item:selected { background: #E8F6FF; color: #0B1221; }
+QTreeWidget::item:hover   { background: #F5FAFF; }
+
+/* Sliders (for the video window too) */
+QSlider::groove:horizontal { height: 6px; background: #DDE6EF; border-radius: 3px; }
+QSlider::handle:horizontal { background: #22ABE1; width: 14px; height: 14px; border-radius: 7px; margin: -4px 0; }
+QSlider::sub-page:horizontal { background: #B9E6FB; border-radius: 3px; }
