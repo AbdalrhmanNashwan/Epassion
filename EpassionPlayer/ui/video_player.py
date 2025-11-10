@@ -274,12 +274,40 @@ class VideoPlayerWindow(QtWidgets.QMainWindow):
         outer.addWidget(self.rec_banner)
 
         # Video surface
+        # Video surface
         self.video_widget = QVideoWidget(self)
         self.video_widget.setMinimumHeight(360)
         self.video_widget.setStyleSheet(
             f"background:#000; border:1px solid {BORDER}; border-radius:12px;"
         )
+        # Make video widget accept keyboard focus so the eventFilter can catch keys
+        self.video_widget.setFocusPolicy(QtCore.Qt.StrongFocus)
         outer.addWidget(self.video_widget, 1)
+
+        # ---------- fullscreen exit button (floating on the video widget) ----------
+        self.btn_exit_fullscreen = QtWidgets.QPushButton("⤫", self.video_widget)
+        self.btn_exit_fullscreen.setFixedSize(44, 44)
+        self.btn_exit_fullscreen.setCursor(QtCore.Qt.PointingHandCursor)
+        # do not let this button grab focus (so Esc/Evt go to the video widget)
+        self.btn_exit_fullscreen.setFocusPolicy(QtCore.Qt.NoFocus)
+        self.btn_exit_fullscreen.setVisible(False)  # hidden by default
+        self.btn_exit_fullscreen.setStyleSheet("""
+            QPushButton{
+                background: rgba(0,0,0,0.55);
+                color: white;
+                border: none;
+                border-radius: 22px;
+                font-weight: 700;
+                font-size: 18px;
+            }
+            QPushButton:hover{
+                background: rgba(0,0,0,0.75);
+            }
+        """)
+        self.btn_exit_fullscreen.clicked.connect(self._toggle_fullscreen)
+        # install event filter so we can reposition the button when the video widget resizes
+        self.video_widget.installEventFilter(self)
+
 
         # Controls panel (light card)
         controls = QtWidgets.QFrame(objectName="controls")
@@ -356,6 +384,24 @@ class VideoPlayerWindow(QtWidgets.QMainWindow):
             f"QPushButton{{border:1px solid {BORDER};border-radius:10px;padding:6px 12px;background:{BG};color:{TEXT_DARK};font-weight:600;}}"
             f"QPushButton:hover{{background:{HOVER_BG};border-color:{PRIMARY};}}"
         )
+    def _update_fullscreen_button_position(self):
+        """
+        Position the exit-fullscreen button at top-right corner inside the video widget.
+        """
+        try:
+            if not hasattr(self, "btn_exit_fullscreen") or not self.btn_exit_fullscreen:
+                return
+            vw = self.video_widget
+            margin = 12
+            bw = self.btn_exit_fullscreen.width()
+            bh = self.btn_exit_fullscreen.height()
+            x = max(0, vw.width() - bw - margin)
+            y = max(0, margin)
+            self.btn_exit_fullscreen.move(x, y)
+            self.btn_exit_fullscreen.raise_()
+        except Exception:
+            pass
+
 
     def _as_combo(self, c: QtWidgets.QComboBox):
         c.setMinimumHeight(34)
@@ -376,6 +422,39 @@ class VideoPlayerWindow(QtWidgets.QMainWindow):
         self.speed.currentTextChanged.connect(self._on_speed)
         self.slider.sliderMoved.connect(lambda v: self.player.setPosition(v) if self.player else None)
         self.btn_full.clicked.connect(self._toggle_fullscreen)
+
+    def eventFilter(self, obj, event):
+        """
+        Handle events for the video_widget so we can reposition the floating fullscreen button
+        and capture key presses (Esc / F) while the video widget is focused/fullscreen.
+        """
+        try:
+            if obj is getattr(self, "video_widget", None):
+                # reposition when the video widget resizes or is shown
+                if event.type() in (QtCore.QEvent.Resize, QtCore.QEvent.Show):
+                    try:
+                        self._update_fullscreen_button_position()
+                    except Exception:
+                        pass
+
+                # capture keypresses that occur while video_widget has focus
+                if event.type() == QtCore.QEvent.KeyPress:
+                    key_event = event  # type: QtGui.QKeyEvent
+                    try:
+                        # Esc -> exit fullscreen if currently fullscreen
+                        if key_event.key() == QtCore.Qt.Key_Escape and self.isFullScreen():
+                            self._toggle_fullscreen()
+                            return True  # consume the event
+                        # F -> toggle fullscreen
+                        if key_event.key() == QtCore.Qt.Key_F:
+                            self._toggle_fullscreen()
+                            return True
+                    except Exception:
+                        pass
+        except Exception:
+            pass
+        return super().eventFilter(obj, event)
+
 
     # ---------- scanner results (debounced on GUI thread) ----------
     @QtCore.Slot(list)
@@ -490,19 +569,53 @@ class VideoPlayerWindow(QtWidgets.QMainWindow):
             pass
 
     def _toggle_fullscreen(self):
-        self.video_widget.setFullScreen(not self.video_widget.isFullScreen())
+        """Toggle fullscreen for this window and show/hide floating exit button."""
+        try:
+            if self.isFullScreen():
+                # exit fullscreen
+                self.showNormal()
+                try:
+                    self.video_widget.setFullScreen(False)
+                except Exception:
+                    pass
+                try:
+                    if hasattr(self, "btn_exit_fullscreen") and self.btn_exit_fullscreen:
+                        self.btn_exit_fullscreen.setVisible(False)
+                except Exception:
+                    pass
+            else:
+                # enter fullscreen
+                self.showFullScreen()
+                try:
+                    self.video_widget.setFullScreen(True)
+                except Exception:
+                    pass
+                try:
+                    if hasattr(self, "btn_exit_fullscreen") and self.btn_exit_fullscreen:
+                        self._update_fullscreen_button_position()
+                        self.btn_exit_fullscreen.setVisible(True)
+                        self.btn_exit_fullscreen.raise_()
+                        try:
+                            self.video_widget.setFocus(QtCore.Qt.OtherFocusReason)
+                        except Exception:
+                             pass
+                except Exception:
+                    pass
+        except Exception:
+            pass
 
     # Allow Esc to exit fullscreen (and F toggles)
-    def keyPressEvent(self, e: QtGui.QKeyEvent) -> None:
-        if e.key() == QtCore.Qt.Key_Escape and self.video_widget.isFullScreen():
-            self.video_widget.setFullScreen(False)
-            e.accept()
-            return
-        if e.key() == QtCore.Qt.Key_F:
-            self._toggle_fullscreen()
-            e.accept()
-            return
-        super().keyPressEvent(e)
+    def keyPressEvent(self, event: QtGui.QKeyEvent) -> None:
+        """
+        Ensure Escape exits full screen reliably.
+        """
+        try:
+            if event.key() == QtCore.Qt.Key_Escape and self.isFullScreen():
+                self._toggle_fullscreen()
+                return
+        except Exception:
+            pass
+        super().keyPressEvent(event)
 
     # ---------- time/seek ----------
     def _fmt(self, ms: int) -> str:
